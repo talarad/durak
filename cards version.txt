@@ -1,0 +1,72 @@
+let cards = []
+
+const arr = ['Leaf', 'Heart', 'Clubs', 'Diamond'];
+let counter = 0;
+
+function card(cardNumber, kind, counter) {
+  const card = {
+    number: cardNumber,
+    kind: kind,
+    key: counter,
+    index: counter
+  }
+
+  return card;
+}
+
+for (let j = 0; j < arr.length; j++) {
+  for (let i = 6; i <= 14; i++) {
+    cards.push(card(i, arr[j], counter));
+    counter++;
+  }
+}
+
+
+function card(value, name, suit, counter) {
+  this.value = name;
+  this.number = value;
+  if (value === "Jack") {
+    this.number = 11;
+  }
+  if (value === "Queen") {
+    this.number = 12;
+  }
+  if (value === "King") {
+    this.number = 13;
+  }
+  if (value === "Ace") {
+    this.number = 14;
+  }
+  this.kind = suit;
+  this.key = counter;
+  this.index = counter;
+}
+
+function deck() {
+  const names = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King', 'Ace'];
+  const suits = ['Hearts', 'Diamonds', 'Spades', 'Clubs'];
+  const cards = [];
+  let counter = 0;
+
+  for (var s = 0; s < suits.length; s++) {
+    for (var n = 2; n <= names.length; n++) {
+      cards.push(new card(n, names[n], suits[s], counter));
+      counter++;
+    }
+  }
+
+  return cards;
+}
+
+const cards = deck();
+shuffleArray(cards);
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    let j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+export default cards;
+

@@ -1,0 +1,282 @@
+import React from 'react';
+//import { createStore } from 'redux'
+import Player from './Player.js';
+import Deck from './Deck.js';
+import Arena from './Arena.js';
+import GameDeck from './cards.js';
+
+
+const numberOfCardsInHand = 6;
+const numOfPlayers = 2;
+let deck = GameDeck;
+
+export default class App extends React.Component {
+  constructor() {
+    super()
+
+    this.updateCards = this.updateCards.bind(this);
+    //this.updateBoard = this.updateBoard.bind(this);
+    this.onCardClick = this.onCardClick.bind(this);
+    this.onCardArenaClick = this.onCardArenaClick.bind(this);
+    this.checkValidityOfDefense = this.checkValidityOfDefense.bind(this);
+    this.checkValidityOfAttack = this.checkValidityOfAttack.bind(this);
+    this.finishTurn = this.finishTurn.bind(this);
+    this.isAttackerOrDefender = this.isAttackerOrDefender.bind(this);
+    this.checkVictory = this.checkVictory.bind(this);
+    this.initHands = this.initHands.bind(this);
+
+    const hands = []
+    for (let i = 0; i < numOfPlayers; i++) {
+      hands[i] = this.initHands([], i)
+    }
+
+    this.state = {
+      playersDecks: hands,
+      gameDeck: deck,
+      strongKind: deck[0].kind,
+      clickedCard: undefined,
+      boardAttack: [],
+      boardDefense: [],
+      possibleNumbersToAttack: [],
+      attacker: 0,
+      defense: 1,
+      currentPlayer: 0
+    }
+  }
+
+  componentWillMount() {
+    this.updateCards();
+  }
+
+  checkValidityOfDefense(card) {
+    if ((card.kind === this.state.clickedCard.kind && card.number < this.state.clickedCard.number) || (card.kind !== this.state.strongKind && this.state.clickedCard.kind === this.state.strongKind)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  onCardArenaClick(card, indexInAttackArr) {
+    if (this.state.boardDefense[indexInAttackArr] === undefined) {
+      if (card.playerId !== this.state.defense) {
+        if (this.state.clickedCard !== undefined) {
+          if (this.checkValidityOfDefense(card)) {
+            const playersDecks = [...this.state.playersDecks];
+            const defenderDeck = playersDecks[this.state.defense];
+            const boardDefense = [...this.state.boardDefense];
+
+            defenderDeck.forEach((card, index) => {
+              if (card === this.state.clickedCard) {
+                defenderDeck.splice(index, 1);
+              }
+            });
+
+            boardDefense[indexInAttackArr] = this.state.clickedCard;
+            playersDecks[this.state.defense] = defenderDeck;
+            this.setState({ boardDefense, playersDecks, clickedCard: undefined });
+          }
+        }
+      }
+    }
+  }
+
+  checkValidityOfAttack(selectedCard) {
+    if (this.state.boardAttack.length === 0) {
+      return true;
+    } else {
+      let isValid = false;
+
+      this.state.boardAttack.concat(this.state.boardDefense).forEach(card => {
+        if (selectedCard.number === card.number) {
+          isValid = true;
+        }
+      })
+
+      return isValid
+    }
+  }
+
+  onCardClick(clickedCard, playerId) {
+    if (this.state.attacker === playerId && clickedCard.playerId === playerId && this.state.boardAttack.length < numberOfCardsInHand) {
+
+      let boardAttack = [...this.state.boardAttack];
+
+      if (this.checkValidityOfAttack(clickedCard)) {
+        boardAttack.push(clickedCard);
+
+        const playersDecks = [...this.state.playersDecks];
+        const playerDeck = playersDecks[playerId];
+
+        playerDeck.forEach((card, index) => {
+          if (card === clickedCard) {
+            playerDeck.splice(index, 1);
+          }
+        });
+
+        playersDecks[this.state.attacker] = playerDeck;
+        this.setState({ boardAttack, playersDecks });
+      }
+    } else
+      if (this.state.defense === playerId && clickedCard.playerId === playerId && this.state.boardDefense.length < numberOfCardsInHand && this.state.boardAttack.length !== 0) {
+        this.setState({ clickedCard });
+      }
+  }
+
+  checkVictory() {
+    if (this.state.gameDeck.length === 0) {
+      for (let i = 0; i < numOfPlayers; i++) {
+        if (this.state.playersDecks[i].length === 0) {
+          return `Player ${i}`;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  initHands(currentPlayerDeck, currentPlayer) {
+
+    while (deck.length > 0 && currentPlayerDeck.length < numberOfCardsInHand) {
+
+      let card = deck.pop();
+
+      card.playerId = currentPlayer;
+      currentPlayerDeck.push(card);
+    }
+
+    return currentPlayerDeck;
+  }
+
+  updateCards() {
+    let currentPlayer = this.state.attacker;
+    let playersDecks = [...this.state.playersDecks];
+    let gameDeck = [...this.state.gameDeck];
+
+    for (let i = 0; i < numOfPlayers; i++) {
+      playersDecks[currentPlayer] = this.initHands(playersDecks[currentPlayer], currentPlayer)
+
+      currentPlayer++;
+      if (currentPlayer >= numOfPlayers) {
+        currentPlayer = 0;
+      }
+    }
+
+    this.setState({ playersDecks, gameDeck })
+  }
+
+  finishTurn(e, playerId) {
+
+    let attacker = this.state.attacker;
+    let defense = this.state.defense;
+
+    if (this.state.attacker === playerId && this.state.boardAttack.length === this.state.boardDefense.length) {
+      attacker = this.state.defense;
+      if (this.state.playersDecks[this.state.defense + 1] !== undefined) {
+        defense = this.state.defense + 1;
+      } else {
+        defense = 0;
+      }
+      this.setState({ attacker, defense, boardAttack: [], boardDefense: [] }, () => this.updateCards());
+
+    } else if (this.state.defense === playerId) {
+
+      const playersDecks = [...this.state.playersDecks];
+      const playerDeck = [];
+
+      playersDecks[playerId].forEach(card => {
+        playerDeck.push(card);
+      })
+      this.state.boardAttack.forEach(card => {
+        playerDeck.push(card);
+      })
+      this.state.boardDefense.forEach(card => {
+        playerDeck.push(card);
+      })
+
+      if (numOfPlayers !== 2) {
+        if (defense < numOfPlayers - 1) {
+          attacker = defense + 1;
+          if (attacker < numOfPlayers - 1) {
+            defense = attacker + 1;
+          } else {
+            defense = 0;
+          }
+        } else {
+          attacker = 0;
+          defense = 1;
+        }
+      }
+
+      console.log(playerDeck)
+      console.log(playerDeck)
+      playersDecks[playerId] = playerDeck;
+
+      this.setState({ playersDecks, attacker, defense, boardAttack: [], boardDefense: [] }, () => this.updateCards());
+    }
+  }
+
+  isAttackerOrDefender(playerId) {
+    if (playerId === this.state.attacker) {
+      return "attacker";
+    }
+    if (playerId === this.state.defense) {
+      return "defense";
+    }
+  }
+
+  rematch() {
+    //this.setState({state: this.state});
+  }
+
+  initDeck() {
+    let cards = []
+    const arr = ['Leaf', 'Heart', 'Clubs', 'Diamond'];
+    let counter = 0;
+
+    for (let j = 0; j < arr.length; j++) {
+      for (let i = 13; i <= 14; i++) {
+        cards.push(this.card(i, arr[j], counter));
+        counter++;
+      }
+    }
+
+    for (let i = cards.length - 1; i > 0; i--) {
+      let j = Math.floor(Math.random() * (i + 1));
+      [cards[i], cards[j]] = [cards[j], cards[i]];
+    }
+
+    return cards;
+  }
+
+  card(cardNumber, kind, counter) {
+    const card = {
+      number: cardNumber,
+      kind: kind,
+      key: counter,
+      index: counter
+    }
+    return card;
+  }
+
+
+
+  render() {
+    const result = this.checkVictory()
+    return (
+      <div className="container">
+        <div className="player1">
+          <Player boardAttack={this.state.boardAttack.length} boardDefense={this.state.boardDefense.length} currentPlayer={this.state.currentPlayer} finishTurn={this.finishTurn} isAttackerOrDefender={this.isAttackerOrDefender(0)} playerId={0} strongKind={this.state.strongKind} onCardClick={this.onCardClick} clickedCard={this.state.clickedCard} updateBoard={this.updateBoard} deck={this.state.playersDecks[0]} />
+        </div>
+        <div className="arena">
+          <Arena rematch={this.rematch} playerId={result} onCardArenaClick={this.onCardArenaClick} attack={this.state.boardAttack} defense={this.state.boardDefense} />
+        </div>
+        <div className="player2">
+          <Player boardAttack={this.state.boardAttack.length} boardDefense={this.state.boardDefense.length} currentPlayer={this.state.currentPlayer} finishTurn={this.finishTurn} isAttackerOrDefender={this.isAttackerOrDefender(1)} playerId={1} strongKind={this.state.strongKind} onCardClick={this.onCardClick} clickedCard={this.state.clickedCard} updateBoard={this.updateBoard} deck={this.state.playersDecks[1]} />
+        </div>
+        <div className="deck">
+          <Deck deck={this.state.gameDeck} />
+        </div>
+      </div>
+    )
+  }
+}
